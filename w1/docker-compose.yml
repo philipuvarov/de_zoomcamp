@@ -1,0 +1,53 @@
+services:
+  ingest_trips:
+    image: ingest
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        user: postgres
+        password: postgres
+        host: database
+        port: 5432
+        database: ny_taxi
+        table: taxi_trips
+        file_url: "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/green/green_tripdata_2019-01.csv.gz"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  ingest_zones:
+    image: ingest_zones
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        user: postgres
+        password: postgres
+        host: database
+        port: 5432
+        database: ny_taxi
+        table: zones
+        file_url: "https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv"
+    depends_on:
+      database:
+        condition: service_healthy
+  
+  database:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: ny_taxi
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      start_period: 5s
+      timeout: 4s
+      retries: 3
+    # volumes:
+      # - ./data:/var/lib/postgresql/data
